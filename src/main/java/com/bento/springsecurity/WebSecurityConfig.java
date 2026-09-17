@@ -18,25 +18,28 @@ public class WebSecurityConfig {
 
         UserDetails user = User.withUsername("user")
                 .password("{noop}password")
-                .roles("USER")
+                .roles("USERS")
                 .build();
 
-        UserDetails admin = User.withUsername("admin")
-                .password("{noop}admin")
-                .roles("ADMIN")
+        UserDetails manager = User.withUsername("manager")
+                .password("{noop}manager")
+                .roles("MANAGERS")
                 .build();
 
-        return new InMemoryUserDetailsManager(user, admin);
+        return new InMemoryUserDetailsManager(user, manager);
     }
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+
         http
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/public/**").permitAll()
+                        .requestMatchers("/").permitAll()
+                        .requestMatchers("/login").hasRole("MANAGERS")
+                        .requestMatchers("/users").hasAnyRole("USERS", "MANAGERS")
                         .anyRequest().authenticated()
                 )
-                .httpBasic(httpBasic -> {});
+                .formLogin(form -> {});
 
         return http.build();
     }
