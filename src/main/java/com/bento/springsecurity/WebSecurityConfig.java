@@ -1,45 +1,47 @@
 package com.bento.springsecurity;
 
+import com.bento.springsecurity.service.SecurityDatabaseService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.authentication.AuthenticationProvider;
+import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
+import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.core.userdetails.User;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.provisioning.InMemoryUserDetailsManager;
+import org.springframework.security.crypto.factory.PasswordEncoderFactories;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 
 @Configuration
 @EnableMethodSecurity
 public class WebSecurityConfig {
 
-    @Bean
-    public InMemoryUserDetailsManager userDetailsService() {
+    private final SecurityDatabaseService securityService;
 
-        UserDetails user = User.withUsername("user")
-                .password("{noop}password")
-                .roles("USERS")
-                .build();
+    public WebSecurityConfig(SecurityDatabaseService securityService) {
+        this.securityService = securityService;
+    }
 
-        UserDetails manager = User.withUsername("manager")
-                .password("{noop}manager")
-                .roles("MANAGERS")
-                .build();
+    @Bean public AuthenticationProvider authenticationProvider() {
+        DaoAuthenticationProvider provider = new DaoAuthenticationProvider(securityService);
+        provider.setPasswordEncoder(passwordEncoder()); return provider;
+    }
 
-        return new InMemoryUserDetailsManager(user, manager);
+    @Bean public PasswordEncoder passwordEncoder() {
+        return PasswordEncoderFactories.createDelegatingPasswordEncoder();
     }
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-
         http
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/").permitAll()
-                        .requestMatchers("/login").hasRole("MANAGERS")
-                        .requestMatchers("/users").hasAnyRole("USERS", "MANAGERS")
+                        .requestMatchers("/users").hasRole("USER")
+                        .requestMatchers("/managers").hasRole("MANAGER")
                         .anyRequest().authenticated()
                 )
-                .formLogin(form -> {});
+                .formLogin(Customizer.withDefaults())
+                .httpBasic(Customizer.withDefaults());
 
         return http.build();
     }
